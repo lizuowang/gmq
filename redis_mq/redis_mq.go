@@ -45,7 +45,7 @@ func InitRedisMQ(MQConf *RedisMQConf) {
 func startRedisMQ() {
 
 	defer func() {
-		conf.L.Error("redis_mq.startRedisMQ stop")
+		conf.L.Info("redis_mq.startRedisMQ stop")
 		if r := recover(); r != nil {
 			conf.L.Error("redis_mq.startRedisMQ stop error ", zap.Any("error", r))
 			// 重新启动

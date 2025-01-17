@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -27,6 +28,23 @@ var (
 
 // 初始化消费者
 func InitConsumer(consumerConf *ConsumerConf) {
+
+	if consumerConf == nil {
+		log.Fatalf("consumer 配置错误")
+	}
+	if consumerConf.Handler == nil {
+		log.Fatalf("consumer ConsumerConf.Handler 不能为空")
+	}
+	if consumerConf.MinWorker <= 0 {
+		log.Fatalf("consumer ConsumerConf.MinWorker 不能小于等于0")
+	}
+	if consumerConf.MaxWorker <= 0 {
+		log.Fatalf("consumer ConsumerConf.MaxWorker 不能为空")
+	}
+	if consumerConf.L == nil {
+		log.Fatalf("consumer ConsumerConf.L 不能为空")
+	}
+
 	conf = consumerConf
 	MsgChan = make(chan string, 100)
 	ctx, cancel = context.WithCancel(context.Background())
@@ -112,6 +130,7 @@ func stopMultiConsumer(num int) {
 // 关闭所有消费者
 func stopAllConsumer() {
 	mu.Lock()
+	num := len(consumers)
 	for consumer := range consumers {
 		consumer.Stop()
 	}
@@ -128,6 +147,7 @@ func stopAllConsumer() {
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
+	log.Println("关闭消费着 ", num)
 }
 
 // 获取消费者数量

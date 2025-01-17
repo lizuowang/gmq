@@ -24,7 +24,7 @@ func main() {
 		RedisCli:  client,
 		ListenKey: "test",
 		Handler:   handleMsg,
-		MinWorker: 1,
+		MinWorker: 80,
 		MaxWorker: 800,
 		L:         zap.NewExample(),
 	}
@@ -42,7 +42,7 @@ func main() {
 
 // 处理消息
 func handleMsg(msg string) (newMsg string) {
-	time.Sleep(time.Millisecond * 500)
+	// time.Sleep(time.Millisecond * 500)
 	fmt.Println(msg)
 	return newMsg
 }
