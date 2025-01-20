@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/signal"
 	"strconv"
 	"time"
 
@@ -33,9 +30,9 @@ func main() {
 
 	consumerConf := &consumer.ConsumerConf{
 		Handler:   handleMsg,
-		MinWorker: 80,
-		MaxWorker: 800,
-		AddWorker: 5,
+		MinWorker: 1,
+		MaxWorker: 1,
+		AddWorker: 1,
 		WaitNum:   2,
 		FreeTimes: 10,
 		L:         L,
@@ -43,26 +40,13 @@ func main() {
 
 	redis_mq.InitRedisMQ(conf, consumerConf)
 
-	go func() {
-		for {
-			fmt.Println("空闲协程数量", consumer.GetFreeCNum())
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
 	//休眠10秒
 	time.Sleep(1 * time.Second)
 	for i := 0; i < 10000; i++ {
 		redis_mq.PushMsg("aaaa" + strconv.Itoa(i))
 	}
 
-	//监听 ctrl+c 信号
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
-
 	redis_mq.Stop()
-	fmt.Println("数", redis_mq.GetChanMsgNum())
 
 }
 

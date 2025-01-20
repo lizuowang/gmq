@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -14,6 +15,9 @@ type ConsumerConf struct {
 	FailPushMsh func(msg string)                 // 失败消息重新投递
 	MinWorker   int                              // 最小worker数量
 	MaxWorker   int                              // 最大worker数量
+	AddWorker   int                              // 每次启动的协程数量
+	WaitNum     int                              // 等待消息数量 大于这个数量 启动协程
+	FreeTimes   int                              // 空闲次数 大于这个数量 关闭协程
 	L           *zap.Logger                      // 日志
 }
 
@@ -24,7 +28,24 @@ var (
 	cancel    context.CancelFunc
 	consumers = make(map[*Consumer]bool)
 	mu        sync.Mutex
+	freeTimes = 0   // 空闲次数
+	freeCNum  int32 // 空闲协程数量
 )
+
+// 增加空闲协程数量
+func IncrFreeCNum() {
+	atomic.AddInt32(&freeCNum, 1)
+}
+
+// 减少空闲协程数量
+func DecrFreeCNum() {
+	atomic.AddInt32(&freeCNum, -1)
+}
+
+// 获取空闲协程数量
+func GetFreeCNum() int32 {
+	return atomic.LoadInt32(&freeCNum)
+}
 
 // 初始化消费者
 func InitConsumer(consumerConf *ConsumerConf) {
@@ -43,6 +64,18 @@ func InitConsumer(consumerConf *ConsumerConf) {
 	}
 	if consumerConf.L == nil {
 		log.Fatalf("consumer ConsumerConf.L 不能为空")
+	}
+	// 等待消息数量
+	if consumerConf.WaitNum <= 0 {
+		consumerConf.WaitNum = 2
+	}
+	// 每次启动的协程数量
+	if consumerConf.AddWorker <= 0 {
+		consumerConf.AddWorker = consumerConf.MinWorker
+	}
+	// 空闲次数
+	if consumerConf.FreeTimes <= 0 {
+		consumerConf.FreeTimes = 60
 	}
 
 	conf = consumerConf
@@ -91,16 +124,37 @@ func manageConsumer() time.Duration {
 	}
 
 	length := GetChanMsgLen()
+	fCNum := int(GetFreeCNum())
 
-	if length >= 5 && consumerLength < conf.MaxWorker { //启动一个消费协程
-		startMultiConsumer(50)
-	} else if length < 1 && consumerLength > conf.MaxWorker { //关闭一个消费协程
-		diff := consumerLength - conf.MaxWorker
-		if diff > 50 {
-			diff = 50
+	if length >= conf.WaitNum && consumerLength < conf.MaxWorker { //消息积压大于阈值 启动新的协程
+		add_num := conf.MaxWorker - consumerLength
+		if add_num > conf.AddWorker {
+			add_num = conf.AddWorker
 		}
-		stopMultiConsumer(diff)
-		sleepTime = time.Second * 5
+		startMultiConsumer(add_num)
+		freeTimes = 0
+	} else if length < 1 && consumerLength > conf.MinWorker && fCNum > 0 { //无积压消息 且有空闲协程 关闭协程
+		// 空闲次数++
+		freeTimes++
+		// 空闲次数大于等于 阈值 关闭协程
+		if freeTimes >= conf.FreeTimes {
+			diff := consumerLength - conf.MinWorker
+			if diff > conf.AddWorker {
+				diff = conf.AddWorker
+				// 如果diff大于等于2 则每次 conf.AddWorker的一半
+				if diff >= 2 {
+					diff = conf.AddWorker / 2
+				}
+			}
+			if diff > fCNum {
+				diff = fCNum
+			}
+			stopMultiConsumer(diff)
+			freeTimes = 0
+		}
+	} else {
+		// 清空空闲次数
+		freeTimes = 0
 	}
 
 	return sleepTime

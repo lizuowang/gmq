@@ -25,16 +25,27 @@ func (c *Consumer) Start() {
 
 	conf.L.Info("Consumer.consumeMsg start ", zap.Int("idx", c.idx))
 
+	// 增加空闲协程数量
+	IncrFreeCNum()
+
+	// 协程结束 减少空闲协程数量
+	defer DecrFreeCNum()
+
 	for {
 		select {
 		case <-c.quitChan:
 			return
 		case msg := <-MsgChan:
+			// 减少空闲协程数量
+			DecrFreeCNum()
 			newMsg := conf.Handler(msg)
 			// 处理消息失败 重新投递
 			if newMsg != "" {
 				conf.FailPushMsh(newMsg)
 			}
+
+			// 增加空闲协程数量
+			IncrFreeCNum()
 		}
 	}
 }

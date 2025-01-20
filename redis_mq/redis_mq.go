@@ -10,12 +10,9 @@ import (
 )
 
 type RedisMQConf struct {
-	RedisCli  *redis.Client                    // redis 客户端
-	ListenKey string                           // 监听的key
-	Handler   func(msg string) (newMsg string) // 处理消息的函数
-	MinWorker int                              // 最小worker数量
-	MaxWorker int                              // 最大worker数量
-	L         *zap.Logger                      // 日志
+	RedisCli  *redis.Client // redis 客户端
+	ListenKey string        // 监听的key
+	L         *zap.Logger   // 日志
 }
 
 var (
@@ -25,16 +22,10 @@ var (
 )
 
 // 初始化redis mq
-func InitRedisMQ(MQConf *RedisMQConf) {
+func InitRedisMQ(MQConf *RedisMQConf, consumerConf *consumer.ConsumerConf) {
 	conf = MQConf
 
-	consumerConf := &consumer.ConsumerConf{
-		Handler:     conf.Handler,
-		FailPushMsh: PushMsg,
-		MinWorker:   conf.MinWorker,
-		MaxWorker:   conf.MaxWorker,
-		L:           conf.L,
-	}
+	consumerConf.FailPushMsh = PushMsg
 
 	consumer.InitConsumer(consumerConf)
 	ctx, cancel = context.WithCancel(context.Background())
