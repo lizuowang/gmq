@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
 
-	"github.com/lizuowang/gmq/consumer"
-	"github.com/lizuowang/gmq/redis_mq"
+	"github.com/lizuowang/gmq/redis_worker"
+	"github.com/lizuowang/gmq/task_worker"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -25,44 +24,46 @@ func main() {
 	client := redis.NewClient(redisConf)
 
 	L := zap.NewExample()
-	conf := &redis_mq.RedisMQConf{
+	conf := &redis_worker.RedisWorkerConf{
 		RedisCli:  client,
 		ListenKey: "test",
 		L:         L,
+		Name:      "storeMq",
 	}
 
-	consumerConf := &consumer.ConsumerConf{
+	WMConf := &task_worker.WorkerMConf{
 		Handler:   handleMsg,
 		MinWorker: 80,
 		MaxWorker: 800,
-		AddWorker: 5,
+		AddWorker: 100,
 		WaitNum:   2,
 		FreeTimes: 10,
 		L:         L,
+		Name:      "storeMq",
 	}
 
-	redis_mq.InitRedisMQ(conf, consumerConf)
+	redisWorker := redis_worker.NewRedisWorker(conf, WMConf)
 
 	go func() {
 		for {
-			fmt.Println("空闲协程数量", consumer.GetFreeCNum())
+			fmt.Println("空闲协程数量", redisWorker.WM.GetFreeCNum())
 			time.Sleep(1 * time.Second)
 		}
 	}()
 
 	//休眠10秒
 	time.Sleep(1 * time.Second)
-	for i := 0; i < 10000; i++ {
-		redis_mq.PushMsg("aaaa" + strconv.Itoa(i))
-	}
+	// for i := 0; i < 10000; i++ {
+	// 	redisWorker.PushMsg("aaaa" + strconv.Itoa(i))
+	// }
 
 	//监听 ctrl+c 信号
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	redis_mq.Stop()
-	fmt.Println("数", redis_mq.GetChanMsgNum())
+	redisWorker.Stop()
+	fmt.Println("数", redisWorker.GetChanMsgNum())
 
 }
 
