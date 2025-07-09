@@ -20,6 +20,9 @@ func NewWorker(idx int, wm *WorkerM) *Worker {
 // 启动消费者
 func (w *Worker) Start() {
 	defer func() {
+		if r := recover(); r != nil {
+			w.wm.Conf.L.Error(w.wm.GetLogMsg("Worker.Start error "), zap.Int("idx", w.idx), zap.Any("error", r))
+		}
 		w.wm.DeleteWorker(w)
 	}()
 
