@@ -11,6 +11,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	defaultChanSize = 200 // 默认通道大小
+)
+
 // 消费者管理器配置
 type WorkerMConf struct {
 	Handler     func(msg string) (newMsg string) // 处理消息的函数
@@ -22,6 +26,7 @@ type WorkerMConf struct {
 	FreeTimes   int                              // 空闲次数 大于这个数量 关闭协程
 	L           *zap.Logger                      // 日志
 	Name        string                           // 日志名称
+	ChanSize    int                              // 通道大小
 }
 
 // 消费者管理器
@@ -67,10 +72,15 @@ func NewWorkerM(conf *WorkerMConf) *WorkerM {
 		conf.FreeTimes = 60
 	}
 
+	// 通道大小
+	if conf.ChanSize <= 0 {
+		conf.ChanSize = defaultChanSize
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	workerM := &WorkerM{
 		Conf:      conf,
-		MsgChan:   make(chan string, 100),
+		MsgChan:   make(chan string, conf.ChanSize),
 		ctx:       ctx,
 		cancel:    cancel,
 		workers:   make(map[*Worker]bool),
@@ -95,6 +105,13 @@ func (wm *WorkerM) DecrFreeCNum() {
 // 获取空闲协程数量
 func (wm *WorkerM) GetFreeCNum() int32 {
 	return atomic.LoadInt32(&wm.freeCNum)
+}
+
+// 获取总协程数
+func (wm *WorkerM) GetTotalCNum() int {
+	wm.mu.Lock()
+	defer wm.mu.Unlock()
+	return len(wm.workers)
 }
 
 // 获取日志消息
@@ -201,6 +218,7 @@ func (wm *WorkerM) PushMsg(msg string) {
 
 // 获取消费者数量
 func (wm *WorkerM) GetWorkerNum() int {
+
 	return len(wm.workers)
 }
 

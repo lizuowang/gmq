@@ -47,6 +47,7 @@ func main() {
 	go func() {
 		for {
 			fmt.Println("空闲协程数量", redisWorker.WM.GetFreeCNum())
+			fmt.Println("堆积消息数量", redisWorker.GetChanMsgNum())
 			time.Sleep(1 * time.Second)
 		}
 	}()
