@@ -35,7 +35,11 @@ func (w *Worker) Start() {
 		select {
 		case <-w.quitChan:
 			return
-		case msg := <-w.wm.MsgChan:
+		case msg, ok := <-w.wm.MsgChan:
+			if !ok {
+				return
+			}
+
 			// 减少空闲协程数量
 			w.wm.DecrFreeCNum()
 			newMsg := w.wm.Conf.Handler(msg)
