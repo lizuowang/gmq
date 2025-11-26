@@ -27,6 +27,7 @@ func main() {
 	conf := &redis_worker.RedisWorkerConf{
 		RedisCli:  client,
 		ListenKey: "test",
+		DelayKey:  "test_delay",
 		L:         L,
 		Name:      "storeMq",
 	}
@@ -44,13 +45,13 @@ func main() {
 
 	redisWorker := redis_worker.NewRedisWorker(conf, WMConf)
 
-	go func() {
-		for {
-			fmt.Println("空闲协程数量", redisWorker.WM.GetFreeCNum())
-			fmt.Println("堆积消息数量", redisWorker.GetChanMsgNum())
-			time.Sleep(1 * time.Second)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		fmt.Println("空闲协程数量", redisWorker.WM.GetFreeCNum())
+	// 		fmt.Println("堆积消息数量", redisWorker.GetChanMsgNum())
+	// 		time.Sleep(1 * time.Second)
+	// 	}
+	// }()
 
 	//休眠10秒
 	time.Sleep(1 * time.Second)
@@ -70,7 +71,7 @@ func main() {
 
 // 处理消息
 func handleMsg(msg string) (newMsg string) {
-	time.Sleep(time.Millisecond * 500)
-	// fmt.Println(msg)
+	// time.Sleep(time.Millisecond * 500)
+	fmt.Println(msg)
 	return newMsg
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -24,15 +25,27 @@ func main() {
 	conf := &redis_worker.RedisWorkerConf{
 		RedisCli:  client,
 		ListenKey: "test",
+		DelayKey:  "test_delay",
 		L:         L,
 		Name:      "storeMq",
 	}
 
+	fmt.Println("开始推送消息")
 	//休眠10秒
-	time.Sleep(1 * time.Second)
-	for i := 0; i < 10000; i++ {
-		redis_worker.PushMsgByConf(conf, "aaaa"+strconv.Itoa(i))
+	// time.Sleep(1 * time.Second)
+
+	// msgs := make([]string, 0)
+	// for i := 0; i < 40; i++ {
+	// 	msgs = append(msgs, "aaaa"+strconv.Itoa(i))
+	// }
+	// redis_worker.PushMsgListByConf(conf, msgs)
+
+	for i := 0; i < 100; i++ {
+		redis_worker.PushDelayMsgByConf(conf, "aaaa"+strconv.Itoa(i), time.Second*1)
 	}
+
+	len := redis_worker.GetMsgNumByConf(conf)
+	fmt.Println("len", len)
 
 	//监听ctrl+c
 	// c := make(chan os.Signal, 1)
@@ -43,7 +56,7 @@ func main() {
 
 // 处理消息
 func handleMsg(msg string) (newMsg string) {
-	time.Sleep(time.Millisecond * 2000)
+	// time.Sleep(time.Millisecond * 2000)
 	// fmt.Println(msg)
 	return newMsg
 }
