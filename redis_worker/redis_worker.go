@@ -3,6 +3,7 @@ package redis_worker
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/lizuowang/gmq/task_worker"
@@ -91,6 +92,19 @@ func GetMsgNumByConf(conf *RedisWorkerConf) int64 {
 	length, err := conf.RedisCli.LLen(context.Background(), conf.ListenKey).Result()
 	if err != nil {
 		conf.L.Error("redis_worker.GetMsgListLen error", zap.Error(err))
+		return 0
+	}
+	return length
+}
+
+// 根据时间戳获取延迟队列长度
+func GetDelayMsgNumByConf(conf *RedisWorkerConf, score int64) int64 {
+	if conf.DelayKey == "" {
+		return 0
+	}
+	length, err := conf.RedisCli.ZCount(context.Background(), conf.DelayKey, "-inf", strconv.FormatInt(score, 10)).Result()
+	if err != nil {
+		conf.L.Error("redis_worker.GetDelayMsgNum error", zap.Error(err))
 		return 0
 	}
 	return length
@@ -254,6 +268,19 @@ func (rw *RedisWorker) GetMsgNum() int64 {
 	length, err := rw.Conf.RedisCli.LLen(context.Background(), rw.Conf.ListenKey).Result()
 	if err != nil {
 		rw.Conf.L.Error(rw.GetLogMsg("redis_worker.GetMsgListLen error"), zap.Error(err))
+		return 0
+	}
+	return length
+}
+
+// 根据时间戳获取延迟队列长度
+func (rw *RedisWorker) GetDelayMsgNum(score int64) int64 {
+	if rw.Conf.DelayKey == "" {
+		return 0
+	}
+	length, err := rw.Conf.RedisCli.ZCount(context.Background(), rw.Conf.DelayKey, "-inf", strconv.FormatInt(score, 10)).Result()
+	if err != nil {
+		rw.Conf.L.Error(rw.GetLogMsg("redis_worker.GetDelayMsgNum error"), zap.Error(err))
 		return 0
 	}
 	return length

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/lizuowang/gmq/redis_worker"
@@ -40,12 +39,13 @@ func main() {
 	// }
 	// redis_worker.PushMsgListByConf(conf, msgs)
 
-	for i := 0; i < 100; i++ {
-		redis_worker.PushDelayMsgByConf(conf, "aaaa"+strconv.Itoa(i), time.Second*1)
-	}
+	// for i := 0; i < 100; i++ {
+	// 	redis_worker.PushDelayMsgByConf(conf, "aaaa"+strconv.Itoa(i), time.Second*1)
+	// }
 
-	len := redis_worker.GetMsgNumByConf(conf)
-	fmt.Println("len", len)
+	score := time.Now().Unix()
+	len := redis_worker.GetDelayMsgNumByConf(conf, score-1)
+	fmt.Println("len", score, len)
 
 	//监听ctrl+c
 	// c := make(chan os.Signal, 1)
