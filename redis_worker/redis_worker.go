@@ -13,11 +13,12 @@ import (
 
 // redis 消费者管理器配置
 type RedisWorkerConf struct {
-	RedisCli  *redis.Client // redis 客户端
-	ListenKey string        // 监听的key
-	DelayKey  string        // 延迟队列的key
-	L         *zap.Logger   // 日志
-	Name      string        // 名称
+	RedisCli      *redis.Client // redis 客户端
+	ListenKey     string        // 监听的key
+	DelayKey      string        // 延迟队列的key
+	L             *zap.Logger   // 日志
+	Name          string        // 名称
+	DelayRunScore func() int64  // 延迟时间戳
 }
 
 // redis 消费者管理器
@@ -112,6 +113,13 @@ func GetDelayMsgNumByConf(conf *RedisWorkerConf, score int64) int64 {
 
 // new RedisWorker
 func NewRedisWorker(RWConf *RedisWorkerConf, WMConf *task_worker.WorkerMConf) *RedisWorker {
+
+	if RWConf.DelayRunScore == nil {
+		RWConf.DelayRunScore = func() int64 {
+			return time.Now().Unix()
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	rw := &RedisWorker{
 		Conf:   RWConf,
@@ -230,12 +238,12 @@ func (rw *RedisWorker) startDelayScheduler() {
 		default:
 		}
 
-		now := time.Now().Unix() // 你用秒就这里传秒
+		runScore := rw.Conf.DelayRunScore() // 你用秒就这里传秒
 		n, err := luaDelayTransfer.Run(
 			rw.ctx,
 			rw.Conf.RedisCli,
 			[]string{rw.Conf.DelayKey, rw.Conf.ListenKey},
-			now,
+			runScore,
 			luaDelayPopNum,
 		).Int()
 		if err != nil && err != redis.Nil {

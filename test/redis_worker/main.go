@@ -30,6 +30,9 @@ func main() {
 		DelayKey:  "test_delay",
 		L:         L,
 		Name:      "storeMq",
+		DelayRunScore: func() int64 {
+			return time.Now().Add(time.Second * 10).Unix()
+		},
 	}
 
 	WMConf := &task_worker.WorkerMConf{
